@@ -11,7 +11,7 @@
 
 **Артефакты Тимлида:**
 
-- [Ссылка на доску]((https://github.com/users/shchavr/projects/9/views/1))
+- [Ссылка на доску](https://github.com/users/shchavr/projects/9/views/1)
 
 **Артефакты Frontend-разработки:**
 
