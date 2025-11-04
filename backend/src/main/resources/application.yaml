@@ -1,0 +1,26 @@
+spring.application.name: backend
+
+server:
+  port: 8080
+
+app:
+  jwt:
+    issuer: service-desk
+    secret: "3QxQ5LjPphGaZxVM2xvuPDVibED5A35H/7yRDrYwoZb9aNqJjuyB8s7egDfji8WG
+JVd+HlKrthUP94vjq10meQ=="
+    access-ttl-min: 10
+    refresh-ttl-days: 14
+
+cors:
+  allowed-origins: "http://localhost:3000"
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/postgres
+    username: postgres
+    password: 12345
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate.jdbc.time_zone: UTC
