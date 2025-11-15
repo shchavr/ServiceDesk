@@ -26,13 +26,21 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final UserRepository userRepository;
 
     @Override
-    protected void doFilterInternal(HttpServletRequest req,
-                                    HttpServletResponse res,
-                                    FilterChain chain) throws ServletException, IOException {
+    protected boolean shouldNotFilter(HttpServletRequest req) {
+        String p = req.getRequestURI();
+        return p.startsWith("/auth/")
+                || p.startsWith("/swagger-ui/")
+                || p.startsWith("/v3/api-docs")   // и JSON, и /v3/api-docs.yaml
+                || p.equals("/actuator/health")
+                || "OPTIONS".equalsIgnoreCase(req.getMethod());
+    }
 
-        String path = req.getRequestURI();
-        // пропускаем публичные эндпоинты авторизации и статик/actuator по желанию
-        if (path.startsWith("/auth/") || "OPTIONS".equalsIgnoreCase(req.getMethod())) {
+    @Override
+    protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
+            throws ServletException, IOException {
+
+        // уже аутентифицирован — пропускаем
+        if (SecurityContextHolder.getContext().getAuthentication() != null) {
             chain.doFilter(req, res);
             return;
         }
@@ -41,20 +49,21 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         if (header != null && header.startsWith("Bearer ")) {
             String token = header.substring(7);
             try {
-                Long userId = jwtService.extractUserId(token);
+                Long userId = jwtService.extractUserId(token); // внутри parse+verify
 
-                // грузим пользователя с ролями
                 User user = userRepository.findById(userId).orElse(null);
                 if (user != null && user.isEnabled() && !user.isLocked()) {
-                    List<SimpleGrantedAuthority> authorities = user.getRoles().stream()
-                            .map(r -> new SimpleGrantedAuthority("ROLE_" + r.getName()))
+                    var authorities = user.getRoles().stream()
+                            .map(r -> new SimpleGrantedAuthority(
+                                    r.getName().startsWith("ROLE_") ? r.getName() : "ROLE_" + r.getName()))
                             .toList();
 
-                    var auth = new UsernamePasswordAuthenticationToken(user, null, authorities);
+                    var auth = new UsernamePasswordAuthenticationToken(
+                            /* principal лучше облегчить, но оставлю как у тебя: */ user, null, authorities);
                     SecurityContextHolder.getContext().setAuthentication(auth);
                 }
             } catch (JwtException | IllegalArgumentException e) {
-                // не валидный/просроченный токен — считаем как неаутентифицированный
+                // битый токен — не аутентифицируем, но swagger мы сюда не пускаем через shouldNotFilter
                 SecurityContextHolder.clearContext();
             }
         }
